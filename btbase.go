@@ -22,92 +22,99 @@ const (
 )
 
 const (
-	// NodeStatusTypeRunning defalut state
-	NodeStatusTypeRunning NodeStatusType = iota
+	// NodeStatusTypeInvalid show invalid
+	NodeStatusTypeInvalid NodeStatusType = iota
 	// NodeStatusTypeSuccess show success state
 	NodeStatusTypeSuccess
 	// NodeStatusTypeFailure show failure state
 	NodeStatusTypeFailure
+	// NodeStatusTypeRunning defalut state
+	NodeStatusTypeRunning
 )
 
-var _ IBTNode = &BTBase{}
+var _ IBTNode = &btNodeBase{}
 
 // IBTNode supply a interface for BTNode in behavior tree.
 type IBTNode interface {
 	InitNode(name string, data interface{})
-	Tick() NodeStatusType // 更新信息
-	Name() string         // 节点名
-	Type() NodeType       // node type
+	Tick(childStatus NodeStatusType) NodeStatusType // 更新信息
+	Name() string                                   // 节点名
+	Type() NodeType                                 // node type
 	AddChild(i IBTNode)
-	SetParent(i IBTNode)                  // set parent node
-	ForeachNode(f func(i IBTNode))        //
-	ForeachNodeIf(f func(i IBTNode) bool) //
+	SetParent(i IBTNode) // set parent node
+	//	ForeachNode(f func(i IBTNode))        //
+	//	ForeachNodeIf(f func(i IBTNode) bool) //
+	// Clone() IBTNode //
 }
 
-// BTBase implements the base data structure for behavior tree.
-type BTBase struct {
+// btNodeBase implements the base data structure for behavior tree.
+type btNodeBase struct {
 	nodeName string
 	category NodeType
 	parent   IBTNode
 	children []IBTNode
 }
 
-// NewBTBaseNode return BTBase structure.
-func NewBTBaseNode(t NodeType) *BTBase {
-	b := &BTBase{
-		category: t,
-	}
-	return b
-}
-
 // InitNode implement IBTNode method.
-func (b *BTBase) InitNode(name string, data interface{}) {
+func (b *btNodeBase) InitNode(name string, data interface{}) {
 	b.nodeName = name
 }
 
 // Type return the node type.
-func (b *BTBase) Type() NodeType {
+func (b *btNodeBase) Type() NodeType {
 	return b.category
 }
 
 // Name implement IBNode method.
-func (b *BTBase) Name() string {
+func (b *btNodeBase) Name() string {
 	return b.nodeName
 }
 
 // Tick update
-func (b *BTBase) Tick() NodeStatusType {
+func (b *btNodeBase) Tick(childStatus NodeStatusType) NodeStatusType {
 	return NodeStatusTypeRunning
 }
 
-// ChildrenCount return the size of children node.
-func (b *BTBase) ChildrenCount() uint {
-	return uint(len(b.children))
+// childrenCount return the size of children node.
+func (b *btNodeBase) childrenCount() int {
+	return len(b.children)
 }
 
 // AddChild add i to children list.
-func (b *BTBase) AddChild(i IBTNode) {
+func (b *btNodeBase) AddChild(i IBTNode) {
 	b.children = append(b.children, i)
 	i.SetParent(b)
 }
 
+func (b *btNodeBase) childByIndex(i int) IBTNode {
+	return b.children[i]
+}
+
 // SetParent set node i as parent.
-func (b *BTBase) SetParent(i IBTNode) {
+func (b *btNodeBase) SetParent(i IBTNode) {
 	b.parent = i
 }
 
+// 转交给子节点执行
+func (b *btNodeBase) exec(i IBTNode) NodeStatusType {
+	childStatus := NodeStatusTypeRunning
+	return i.Tick(childStatus)
+}
+
+/*
 // ForeachNode traverse all nodes.
-func (b *BTBase) ForeachNode(f func(i IBTNode)) {
+func (b *btNodeBase) ForeachNode(f func(i IBTNode)) {
 	for _, node := range b.children {
 		f(node)
 	}
 }
 
 // ForeachNodeIf traverse all nodes and stop tranvese if find the need one.
-func (b *BTBase) ForeachNodeIf(f func(i IBTNode) bool) {
+func (b *btNodeBase) ForeachNodeIf(f func(i IBTNode) bool) {
 	for _, node := range b.children {
 		if f(node) {
 			return
 		}
 	}
 }
+*/
