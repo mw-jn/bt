@@ -96,7 +96,7 @@ func (b *btNodeBase) SetParent(i IBTNode) {
 }
 
 // 转交给子节点执行
-func (b *btNodeBase) exec(i IBTNode) NodeStatusType {
+func (b *btNodeBase) dispatchExec(i IBTNode) NodeStatusType {
 	childStatus := NodeStatusTypeRunning
 	return i.Tick(childStatus)
 }

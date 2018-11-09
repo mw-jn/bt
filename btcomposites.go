@@ -37,6 +37,10 @@ func (cb *btCompositeBase) activeChildNode() IBTNode {
 	return cb.childByIndex(cb.activeChildIndex)
 }
 
+func (cb *btCompositeBase) isActiveIndexReachEnd() bool {
+	return cb.activeChildIndex >= cb.childrenCount()
+}
+
 // Selector
 // At least one child
 type btSelector struct {
@@ -51,7 +55,7 @@ func (slc *btSelector) onEnter() {
 }
 
 func (slc *btSelector) Tick(childStatus NodeStatusType) NodeStatusType {
-	if slc.activeChildIndex >= slc.childrenCount() {
+	if slc.isActiveIndexReachEnd() {
 		panic("BT Node Selector error: Child Index Overflow.")
 	}
 
@@ -60,7 +64,7 @@ func (slc *btSelector) Tick(childStatus NodeStatusType) NodeStatusType {
 	for {
 		if s == NodeStatusTypeRunning {
 			childNode := slc.activeChildNode()
-			s = slc.exec(childNode)
+			s = slc.dispatchExec(childNode)
 		}
 
 		if s != NodeStatusTypeFailure {
@@ -68,7 +72,7 @@ func (slc *btSelector) Tick(childStatus NodeStatusType) NodeStatusType {
 		}
 
 		slc.activeChildIndex++
-		if slc.activeChildIndex >= slc.childrenCount() {
+		if slc.isActiveIndexReachEnd() {
 			return NodeStatusTypeFailure
 		}
 
@@ -112,7 +116,7 @@ func (sp *btSelectorProbability) Tick(childStatus NodeStatusType) NodeStatusType
 
 	if sp.checkActiveIndexInvalid() {
 		childNode := sp.activeChildNode()
-		s = sp.exec(childNode)
+		s = sp.dispatchExec(childNode)
 		return s
 	}
 
@@ -126,7 +130,7 @@ func (sp *btSelectorProbability) Tick(childStatus NodeStatusType) NodeStatusType
 		sum += w
 		if w > 0 && sum >= r {
 			childNode := sp.childByIndex(i)
-			s = sp.exec(childNode)
+			s = sp.dispatchExec(childNode)
 			if s == NodeStatusTypeRunning {
 				sp.activeChildIndex = i
 			}
@@ -138,8 +142,47 @@ func (sp *btSelectorProbability) Tick(childStatus NodeStatusType) NodeStatusType
 	return NodeStatusTypeFailure
 } // end SelectorProbability
 
+// SelectorStochastic
 type btSelectorStochastic struct {
 	btCompositeBase
+
+	childIndexSlc []int
+}
+
+func (ss *btSelectorStochastic) onEnter() {
+	ss.childIndexSlc = make([]int, ss.childrenCount())
+	for i := range ss.childIndexSlc {
+		ss.childIndexSlc[i] = i
+	}
+	reArrangeIntSlice(ss.childIndexSlc)
+	ss.activeChildIndex = 0
+}
+
+func (ss *btSelectorStochastic) Tick(childStatus NodeStatusType) NodeStatusType {
+	if ss.isActiveIndexReachEnd() {
+		panic("BT Node SelectorStochastic error: Child Index Overflow.")
+	}
+
+	s := childStatus
+	isfirstEnter := true
+	for {
+		if !isfirstEnter || s == NodeStatusTypeRunning {
+			factChildIndex := ss.childIndexSlc[ss.activeChildIndex]
+			childNode := ss.childByIndex(factChildIndex)
+			s = ss.dispatchExec(childNode)
+		}
+
+		isfirstEnter = false
+		if s != NodeStatusTypeFailure {
+			return s
+		}
+
+		ss.activeChildIndex++
+
+		if ss.isActiveIndexReachEnd() {
+			return NodeStatusTypeFailure
+		}
+	}
 }
 
 // Sequence
@@ -155,7 +198,7 @@ func (sq *btSequence) onEnter() {
 }
 
 func (sq *btSequence) Tick(childStatus NodeStatusType) NodeStatusType {
-	if sq.activeChildIndex >= sq.childrenCount() {
+	if sq.isActiveIndexReachEnd() {
 		panic("BT Node Sequence error: Child Index Overflow.")
 	}
 
@@ -163,7 +206,7 @@ func (sq *btSequence) Tick(childStatus NodeStatusType) NodeStatusType {
 	for {
 		if s == NodeStatusTypeRunning {
 			childNode := sq.activeChildNode()
-			s = sq.exec(childNode)
+			s = sq.dispatchExec(childNode)
 		}
 
 		if s != NodeStatusTypeSuccess {
@@ -171,10 +214,53 @@ func (sq *btSequence) Tick(childStatus NodeStatusType) NodeStatusType {
 		}
 
 		sq.activeChildIndex++
-		if sq.activeChildIndex >= sq.childrenCount() {
+		if sq.isActiveIndexReachEnd() {
 			return NodeStatusTypeSuccess
 		}
 
 		s = NodeStatusTypeRunning
 	}
 } // end Sequence
+
+// SequenceStochastic
+type btSequenceStochastic struct {
+	btCompositeBase
+
+	childIndexSlc []int
+}
+
+func (ss *btSequenceStochastic) onEnter() {
+	ss.childIndexSlc = make([]int, ss.childrenCount())
+	for i := range ss.childIndexSlc {
+		ss.childIndexSlc[i] = i
+	}
+	reArrangeIntSlice(ss.childIndexSlc)
+	ss.activeChildIndex = 0
+}
+
+func (ss *btSequenceStochastic) Tick(childStatus NodeStatusType) NodeStatusType {
+	if ss.isActiveIndexReachEnd() {
+		panic("BT Node SequenceStochastic error: Child Index Overflow.")
+	}
+
+	s := childStatus
+	isfirstEnter := true
+	for {
+		if !isfirstEnter || s == NodeStatusTypeRunning {
+			factChildIndex := ss.childIndexSlc[ss.activeChildIndex]
+			childNode := ss.childByIndex(factChildIndex)
+			s = ss.dispatchExec(childNode)
+		}
+
+		isfirstEnter = false
+		if s != NodeStatusTypeSuccess {
+			return s
+		}
+
+		ss.activeChildIndex++
+
+		if ss.isActiveIndexReachEnd() {
+			return NodeStatusTypeSuccess
+		}
+	}
+}
