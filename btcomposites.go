@@ -54,7 +54,7 @@ func (slc *btSelector) onEnter() {
 	slc.activeChildIndex = 0
 }
 
-func (slc *btSelector) Tick(childStatus NodeStatusType) NodeStatusType {
+func (slc *btSelector) Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType {
 	if slc.isActiveIndexReachEnd() {
 		panic("BT Node Selector error: Child Index Overflow.")
 	}
@@ -64,7 +64,7 @@ func (slc *btSelector) Tick(childStatus NodeStatusType) NodeStatusType {
 	for {
 		if s == NodeStatusTypeRunning {
 			childNode := slc.activeChildNode()
-			s = slc.dispatchExec(childNode)
+			s = slc.dispatchExec(childNode, agent)
 		}
 
 		if s != NodeStatusTypeFailure {
@@ -108,7 +108,7 @@ func (sp *btSelectorProbability) onExit() {
 	sp.activeChildIndex = invalidChildIndex
 }
 
-func (sp *btSelectorProbability) Tick(childStatus NodeStatusType) NodeStatusType {
+func (sp *btSelectorProbability) Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType {
 	s := childStatus
 	if s != NodeStatusTypeRunning {
 		return s
@@ -116,7 +116,7 @@ func (sp *btSelectorProbability) Tick(childStatus NodeStatusType) NodeStatusType
 
 	if sp.checkActiveIndexInvalid() {
 		childNode := sp.activeChildNode()
-		s = sp.dispatchExec(childNode)
+		s = sp.dispatchExec(childNode, agent)
 		return s
 	}
 
@@ -130,7 +130,7 @@ func (sp *btSelectorProbability) Tick(childStatus NodeStatusType) NodeStatusType
 		sum += w
 		if w > 0 && sum >= r {
 			childNode := sp.childByIndex(i)
-			s = sp.dispatchExec(childNode)
+			s = sp.dispatchExec(childNode, agent)
 			if s == NodeStatusTypeRunning {
 				sp.activeChildIndex = i
 			}
@@ -158,7 +158,7 @@ func (ss *btSelectorStochastic) onEnter() {
 	ss.activeChildIndex = 0
 }
 
-func (ss *btSelectorStochastic) Tick(childStatus NodeStatusType) NodeStatusType {
+func (ss *btSelectorStochastic) Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType {
 	if ss.isActiveIndexReachEnd() {
 		panic("BT Node SelectorStochastic error: Child Index Overflow.")
 	}
@@ -169,7 +169,7 @@ func (ss *btSelectorStochastic) Tick(childStatus NodeStatusType) NodeStatusType 
 		if !isfirstEnter || s == NodeStatusTypeRunning {
 			factChildIndex := ss.childIndexSlc[ss.activeChildIndex]
 			childNode := ss.childByIndex(factChildIndex)
-			s = ss.dispatchExec(childNode)
+			s = ss.dispatchExec(childNode, agent)
 		}
 
 		isfirstEnter = false
@@ -197,7 +197,7 @@ func (sq *btSequence) onEnter() {
 	sq.activeChildIndex = 0
 }
 
-func (sq *btSequence) Tick(childStatus NodeStatusType) NodeStatusType {
+func (sq *btSequence) Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType {
 	if sq.isActiveIndexReachEnd() {
 		panic("BT Node Sequence error: Child Index Overflow.")
 	}
@@ -206,7 +206,7 @@ func (sq *btSequence) Tick(childStatus NodeStatusType) NodeStatusType {
 	for {
 		if s == NodeStatusTypeRunning {
 			childNode := sq.activeChildNode()
-			s = sq.dispatchExec(childNode)
+			s = sq.dispatchExec(childNode, agent)
 		}
 
 		if s != NodeStatusTypeSuccess {
@@ -238,7 +238,7 @@ func (ss *btSequenceStochastic) onEnter() {
 	ss.activeChildIndex = 0
 }
 
-func (ss *btSequenceStochastic) Tick(childStatus NodeStatusType) NodeStatusType {
+func (ss *btSequenceStochastic) Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType {
 	if ss.isActiveIndexReachEnd() {
 		panic("BT Node SequenceStochastic error: Child Index Overflow.")
 	}
@@ -249,7 +249,7 @@ func (ss *btSequenceStochastic) Tick(childStatus NodeStatusType) NodeStatusType 
 		if !isfirstEnter || s == NodeStatusTypeRunning {
 			factChildIndex := ss.childIndexSlc[ss.activeChildIndex]
 			childNode := ss.childByIndex(factChildIndex)
-			s = ss.dispatchExec(childNode)
+			s = ss.dispatchExec(childNode, agent)
 		}
 
 		isfirstEnter = false

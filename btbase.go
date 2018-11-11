@@ -1,5 +1,10 @@
 package bt
 
+import (
+	"fmt"
+	"xxml"
+)
+
 // NodeType can be redefined type.
 type NodeType int
 
@@ -36,34 +41,52 @@ var _ IBTNode = &btNodeBase{}
 
 // IBTNode supply a interface for BTNode in behavior tree.
 type IBTNode interface {
-	InitNode(name string, data interface{})
-	Tick(childStatus NodeStatusType) NodeStatusType // 更新信息
-	Name() string                                   // 节点名
-	Type() NodeType                                 // node type
+	loadAttributes(name string, data interface{})
+	Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType // 更新信息
+	Name() string                                                 // 节点名
+	//	Type() NodeType                                               // node type
 	AddChild(i IBTNode)
-	SetParent(i IBTNode) // set parent node
-	//	ForeachNode(f func(i IBTNode))        //
+	SetParent(i IBTNode)           // set parent node
+	ForeachNode(f func(i IBTNode)) //
 	//	ForeachNodeIf(f func(i IBTNode) bool) //
-	// Clone() IBTNode //
+	// Clone() IBTNode
+	printAttributes() string
 }
 
 // btNodeBase implements the base data structure for behavior tree.
 type btNodeBase struct {
 	nodeName string
-	category NodeType
+	//	category NodeType
+
 	parent   IBTNode
 	children []IBTNode
+
+	attr attributes // 节点属性
 }
 
-// InitNode implement IBTNode method.
-func (b *btNodeBase) InitNode(name string, data interface{}) {
+func (b *btNodeBase) loadAttributes(name string, data interface{}) {
 	b.nodeName = name
+
+	if data == nil {
+		return
+	}
+
+	d, ok := data.(xxml.IXMLNode)
+	if !ok {
+		panic(fmt.Sprintf("BT Node Base init error: (original data type %T) => (*xxml.XMLNode)", data))
+	}
+
+	d.ForeachAttr(func(k, v string) {
+		b.attr.add(k, v)
+	})
 }
 
+/*
 // Type return the node type.
 func (b *btNodeBase) Type() NodeType {
 	return b.category
 }
+*/
 
 // Name implement IBNode method.
 func (b *btNodeBase) Name() string {
@@ -71,7 +94,7 @@ func (b *btNodeBase) Name() string {
 }
 
 // Tick update
-func (b *btNodeBase) Tick(childStatus NodeStatusType) NodeStatusType {
+func (b *btNodeBase) Tick(agent *Agent, childStatus NodeStatusType) NodeStatusType {
 	return NodeStatusTypeRunning
 }
 
@@ -96,12 +119,11 @@ func (b *btNodeBase) SetParent(i IBTNode) {
 }
 
 // 转交给子节点执行
-func (b *btNodeBase) dispatchExec(i IBTNode) NodeStatusType {
+func (b *btNodeBase) dispatchExec(i IBTNode, agent *Agent) NodeStatusType {
 	childStatus := NodeStatusTypeRunning
-	return i.Tick(childStatus)
+	return i.Tick(agent, childStatus)
 }
 
-/*
 // ForeachNode traverse all nodes.
 func (b *btNodeBase) ForeachNode(f func(i IBTNode)) {
 	for _, node := range b.children {
@@ -109,6 +131,7 @@ func (b *btNodeBase) ForeachNode(f func(i IBTNode)) {
 	}
 }
 
+/*
 // ForeachNodeIf traverse all nodes and stop tranvese if find the need one.
 func (b *btNodeBase) ForeachNodeIf(f func(i IBTNode) bool) {
 	for _, node := range b.children {
@@ -118,3 +141,7 @@ func (b *btNodeBase) ForeachNodeIf(f func(i IBTNode) bool) {
 	}
 }
 */
+
+func (b *btNodeBase) printAttributes() string {
+	return b.attr.String()
+}
